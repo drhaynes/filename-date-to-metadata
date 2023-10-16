@@ -1,25 +1,29 @@
 use std::{fs, io};
+use std::env::current_dir;
 use filetime::FileTime;
 use chrono::{NaiveDateTime};
 use std::path::Path;
 
 fn main() {
-    let dir_path = Path::new("/Users/drh/testing/test-files");
-    visit_dirs(dir_path, &modify_file_dates)
+    let dir_path = current_dir().expect("Failed to get current dir");
+    visit_dirs(dir_path.as_path(), &modify_file_dates)
         .expect("Failed visiting dirs")
 }
 
 fn modify_file_dates(entry: &fs::DirEntry) {
     let path_buf = entry.path();
     let path = path_buf.as_path();
-    let parsed_date = extract_date_from_path(path).unwrap();
-    println!("{}", parsed_date.format("%Y-%m-%d %H:%M:%S").to_string());
+    let parsed_date = extract_date_from_path(path);
 
-    let timestamp = parsed_date.timestamp();
-    let filetime = FileTime::from_unix_time(timestamp, 0);
-
-   filetime::set_file_times(path, filetime, filetime)
-       .expect("Could not set file times");
+    match parsed_date {
+        None => {}
+        Some(parsed_date) => {
+            let timestamp = parsed_date.timestamp();
+            let filetime = FileTime::from_unix_time(timestamp, 0);
+            filetime::set_file_times(path, filetime, filetime)
+                .expect("Could not set file times");
+        }
+    }
 }
 
 fn extract_date_from_path(path: &Path) -> Option<NaiveDateTime> {
